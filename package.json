@@ -1,0 +1,16 @@
+{
+  "name": "rpg_game",
+  "version": "1.0.0",
+  "description": "rpg_game Project",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "matter-js": "^0.20.0",
+    "nodemon": "^3.1.11"
+  }
+}

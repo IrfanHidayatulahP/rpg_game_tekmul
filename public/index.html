@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8" />
+  <title>RPG — Pilih Karakter</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1720;
+      --panel: #111827;
+      --accent: #ff9800;
+      --text: #fff;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    #game-root {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #skillBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 18px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      z-index: 30
+    }
+
+    #startOverlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8));
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .panel {
+      width: 760px;
+      max-width: calc(100% - 40px);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6)
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 6px
+    }
+
+    .subtitle {
+      color: #bbb;
+      margin-bottom: 12px
+    }
+
+    .cards {
+      display: flex;
+      gap: 14px;
+      margin: 14px 0;
+      flex-wrap: wrap
+    }
+
+    .char-card {
+      flex: 1;
+      min-width: 240px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+      transition: box-shadow .18s, transform .12s
+    }
+
+    .char-card:hover {
+      transform: translateY(-4px)
+    }
+
+    .char-card.selected[data-type="melee"] {
+      box-shadow: 0 18px 40px rgba(0, 188, 212, 0.14), inset 0 0 0 3px rgba(0, 188, 212, 0.08);
+      border: 1px solid rgba(0, 188, 212, 0.16);
+      transform: translateY(-6px);
+    }
+
+    .char-card.selected[data-type="ranged"] {
+      box-shadow: 0 18px 40px rgba(255, 112, 67, 0.14), inset 0 0 0 3px rgba(255, 112, 67, 0.06);
+      border: 1px solid rgba(255, 112, 67, 0.14);
+      transform: translateY(-6px);
+    }
+
+
+    .card-badge {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px
+    }
+
+    select,
+    button.start-btn {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      cursor: pointer
+    }
+
+    button.start-btn {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700
+    }
+
+    .instructions {
+      color: #ddd;
+      margin-top: 12px;
+      font-size: 14px
+    }
+
+    .credits {
+      color: #888;
+      margin-top: 10px;
+      font-size: 12px
+    }
+
+    @media(max-width:640px) {
+      .panel {
+        padding: 14px
+      }
+
+      .title {
+        font-size: 20px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-root"></div>
+
+  <!-- skill & action buttons -->
+  <button id="skillBtn">SKILL (F)</button>
+  <button id="restartBtn"
+    style="position:fixed;bottom:70px;right:20px;padding:10px 14px;background:#4caf50;color:#fff;border-radius:8px;border:none;display:none;z-index:30">Restart</button>
+  <button id="menuBtn"
+    style="position:fixed;bottom:120px;right:20px;padding:10px 14px;background:#607d8b;color:#fff;border-radius:8px;border:none;display:none;z-index:30">Main
+    Menu</button>
+
+  <!-- START OVERLAY -->
+  <div id="startOverlay">
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="gameTitle">
+      <div class="title" id="gameTitle">Echo of Motion — Choose Your Hero</div>
+      <div class="subtitle">Pilih karakter untuk memulai. Setiap karakter punya playstyle berbeda.</div>
+
+      <div class="cards">
+        <div class="char-card" id="card-melee" data-type="melee">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="card-badge" style="background:linear-gradient(45deg,#00bcd4,#004d66)">MELEE</div>
+            <div>
+              <div style="font-weight:700">Melee — Vanguard</div>
+              <div style="color:#bbb;margin-top:6px">HP tinggi, serangan jarak dekat cone lebar.</div>
+              <div style="margin-top:8px">HP: <strong>120</strong> · Speed: <strong>4</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="char-card" id="card-ranged" data-type="ranged">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="card-badge" style="background:linear-gradient(45deg,#ff7043,#7b2f00)">RANGED</div>
+            <div>
+              <div style="font-weight:700">Ranged — Archer</div>
+              <div style="color:#bbb;margin-top:6px">HP rendah, serangan jauh menggunakan projectile.</div>
+              <div style="margin-top:8px">HP: <strong>80</strong> · Speed: <strong>4.5</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <label for="difficulty" style="color:#ddd">Difficulty:</label>
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="start-btn" id="startBtn">Start Game</button>
+      </div>
+
+      <div class="instructions">
+        Controls: <strong>WASD</strong> / <strong>Arrow</strong> to move. <strong>Space</strong> to attack.
+        <strong>F</strong> or <strong>SKILL</strong> untuk gunakan skill.
+        <br> Klik card untuk memilih karakter (highlight akan muncul). Klik Start untuk memulai.
+      </div>
+
+      <div class="credits">Prototype menggunakan p5.js. Cocok untuk pengembangan Tugas Akhir.</div>
+    </div>
+  </div>
+
+  <script>
+    // selection UI before module loads
+    (function () {
+      const melee = document.getElementById('card-melee');
+      const ranged = document.getElementById('card-ranged');
+      let selected = 'melee';
+      function select(type) {
+        selected = type;
+        melee.classList.toggle('selected', type === 'melee');
+        ranged.classList.toggle('selected', type === 'ranged');
+        window.__selectedCharacterType = selected;
+      }
+      melee.addEventListener('click', () => select('melee'));
+      ranged.addEventListener('click', () => select('ranged'));
+      // default
+      select('melee');
+    })();
+  </script>
+
+  <!-- libs -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+  <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+
+  <!-- entry module -->
+  <script type="module" src="./sketch.js"></script>
+</body>
+
+</html>
