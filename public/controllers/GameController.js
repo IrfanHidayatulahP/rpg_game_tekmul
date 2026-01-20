@@ -1,130 +1,210 @@
+// GameController.js
 import Player from '../models/Player.js';
 import Enemy from '../models/Enemy.js';
 import MeleeCharacter from '../models/MeleeCharacter.js';
 import RangedCharacter from '../models/RangedCharacter.js';
+import Ally from '../models/Ally.js';
 
 export default class GameController {
-    constructor(characterType = 'melee') {
-        // choose hero class
-        if (characterType === 'ranged') {
-            this.player = new RangedCharacter(120, 120);
-        } else if (characterType === 'melee') {
-            this.player = new MeleeCharacter(120, 120);
-        } else {
-            this.player = new Player(120, 120); // fallback
-        }
+    constructor(characterType = 'melee', startFloor = 1, difficulty = 'normal') {
+        this.characterType = characterType;
+        this.startingFloor = Math.max(1, startFloor | 0);
+        this.floor = this.startingFloor;
+        this.difficulty = difficulty;
+        this.createPlayer();
 
-        this.enemy = new Enemy(600, 120);
+        this.enemies = [];
+        this.allies = [];
 
-        // effects and projectiles
         this.slashes = [];
         this.skillEffects = [];
         this.hitEffects = [];
-        this.projectiles = []; // {x,y,dx,dy,damage,life,owner}
+        this.projectiles = [];
 
-        // skill button hook
         this.skillRequested = false;
+        this.spawnForCurrentFloor();
+
         const btn = document.getElementById('skillBtn');
         if (btn) btn.addEventListener('click', () => (this.skillRequested = true));
     }
 
-    handleInput() {
-        let dx = 0;
-        let dy = 0;
+    createPlayer() {
+        if (this.characterType === 'ranged') this.player = new RangedCharacter(120, 120);
+        else if (this.characterType === 'melee') this.player = new MeleeCharacter(120, 120);
+        else this.player = new Player(120, 120);
+    }
 
+    enemiesCountForFloor() {
+        // 1 enemy for floors 1-3, 2 for 4-6, etc.
+        return 1 + Math.floor((this.floor - 1) / 3);
+    }
+
+    spawnEnemies(count) {
+        this.enemies.length = 0;
+        const baseHp = 30 + (this.floor - 1) * 18;
+        const baseSpeed = 1.0 + (this.floor - 1) * 0.08;
+        const diffMult = this.difficulty === 'hard' ? 1.4 : this.difficulty === 'easy' ? 0.7 : 1.0;
+
+        for (let i = 0; i < count; i++) {
+            const ex = width - 220 + (i * 48);
+            const ey = height / 2 - 40 + (i * 30);
+            const e = new Enemy(ex, ey);
+            e.maxHp = Math.ceil(baseHp * diffMult);
+            e.hp = e.maxHp;
+            e.speed = baseSpeed * diffMult;
+            e.isDead = false;
+            this.enemies.push(e);
+        }
+    }
+
+    spawnForCurrentFloor() {
+        const count = this.enemiesCountForFloor();
+        this.spawnEnemies(count);
+    }
+
+    addAlly(type = 'melee') {
+        // create a template hero to copy stats from MeleeCharacter / RangedCharacter
+        let template = null;
+        if (type === 'melee') {
+            template = new MeleeCharacter(0, 0);
+        } else {
+            template = new RangedCharacter(0, 0);
+        }
+
+        // pull relevant stats into a plain object
+        const stats = {
+            hp: template.hp,
+            speed: template.speed,
+            attackRange: template.attackRange,
+            attackDamage: template.attackDamage,
+            attackDelay: template.attackDelay,
+            projectileSpeed: template.projectileSpeed || 0,
+            projectileLife: template.projectileLife || 0,
+            attackArcDeg: template.attackArcDeg || 120
+        };
+
+        // spawn ally near player
+        const a = new Ally(this.player.x + 40, this.player.y + 40, type, stats);
+        this.allies.push(a);
+    }
+
+    getAliveEnemies() {
+        return this.enemies.filter(e => e && !e.isDead);
+    }
+
+    // find enemies in player's cone; returns array sorted by distance
+    findTargetsInCone(range, arcDeg) {
+        const px = this.player.x + this.player.size / 2;
+        const py = this.player.y + this.player.size / 2;
+        const facing = this.player.getFacingAngle();
+        const halfRad = (arcDeg / 2) * Math.PI / 180;
+        const hits = [];
+        for (const e of this.getAliveEnemies()) {
+            const ex = e.x + e.size / 2;
+            const ey = e.y + e.size / 2;
+            const d = Math.hypot(ex - px, ey - py);
+            if (d <= range + e.size / 2) {
+                const toAng = Math.atan2(ey - py, ex - px);
+                let diff = Math.abs((facing - toAng + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+                if (diff <= halfRad) hits.push({ enemy: e, dist: d });
+            }
+        }
+        hits.sort((a, b) => a.dist - b.dist);
+        return hits.map(h => h.enemy);
+    }
+
+    handleInput() {
+        let dx = 0, dy = 0;
         if (keyIsDown(65)) dx = -1;
         if (keyIsDown(68)) dx = 1;
         if (keyIsDown(87)) dy = -1;
         if (keyIsDown(83)) dy = 1;
-
         if (keyIsDown(LEFT_ARROW)) dx = -1;
         if (keyIsDown(RIGHT_ARROW)) dx = 1;
         if (keyIsDown(UP_ARROW)) dy = -1;
         if (keyIsDown(DOWN_ARROW)) dy = 1;
-
         this.player.move(dx, dy);
 
-        // attack: melee returns boolean (handled inside), ranged returns projectile or array
         if (keyIsDown(32)) {
-            const result = this.player.attack(this.enemy);
-            if (result) {
-                // if ranged: result is object or array
-                if (Array.isArray(result)) {
-                    for (const p of result) this.projectiles.push(p);
-                } else if (typeof result === 'object') {
-                    this.projectiles.push(result);
+            // attack: if ranged returns projectile(s)
+            if (this.player instanceof RangedCharacter) {
+                const proj = this.player.attack();
+                if (proj) this.projectiles.push(proj);
+            } else {
+                // melee: attack nearest valid target in cone
+                const targets = this.findTargetsInCone(this.player.attackRange, this.player.attackArcDeg);
+                if (targets.length > 0) {
+                    this.player.attack(targets[0]);
+                    this.spawnSlash(targets[0].x + targets[0].size / 2, targets[0].y + targets[0].size / 2);
                 } else {
-                    // melee hit -> spawn small slash
-                    if (result === true) {
-                        this.spawnSlash(this.enemy.x + this.enemy.size / 2, this.enemy.y + this.enemy.size / 2);
-                    }
+                    // still swing (visual) even if miss
+                    this.player.attack(null);
                 }
             }
         }
 
-        // skill via F
         if (keyIsDown(70)) this.skillRequested = true;
     }
 
-    spawnSlash(x, y) {
-        this.slashes.push({ x, y, life: 12, size: 22 });
-    }
-
-    spawnSkillEffect(cx, cy) {
-        this.skillEffects.push({ x: cx, y: cy, life: 30, size: 120 });
-    }
-
-    spawnHitEffect(x, y) {
-        this.hitEffects.push({ x, y, life: 18, size: 40 });
-    }
+    spawnSlash(x, y) { this.slashes.push({ x, y, life: 12, size: 22 }); }
+    spawnSkillEffect(cx, cy) { this.skillEffects.push({ x: cx, y: cy, life: 30, size: 120 }); }
+    spawnHitEffect(x, y) { this.hitEffects.push({ x, y, life: 18, size: 40 }); }
 
     update() {
         this.handleInput();
         this.player.update();
 
-        // enemy attack logic
-        const enemyHit = this.enemy.update(this.player);
-        if (enemyHit) this.spawnHitEffect(this.player.x + this.player.size / 2, this.player.y + this.player.size / 2);
+        // update allies (auto-behaviour)
+        for (let idx = 0; idx < this.allies.length; idx++) {
+            const a = this.allies[idx];
+            if (!a) continue;
+            a.slotIndex = idx;
+            a.totalAllies = this.allies.length;
+            a.act(this.player, this.getAliveEnemies(), (proj) => this.projectiles.push(proj));
+        }
 
-        // handle skillRequest (player.useSkill may return projectiles or boolean)
+        // update enemies
+        for (const e of this.enemies) {
+            if (!e) continue;
+            const hit = e.update(this.player);
+            if (hit) this.spawnHitEffect(this.player.x + this.player.size / 2, this.player.y + this.player.size / 2);
+        }
+
+        // handle skill request (player useSkill may return projectiles or boolean)
         if (this.skillRequested) {
-            const skillResult = this.player.useSkill(this.enemy);
-            if (skillResult) {
-                if (Array.isArray(skillResult)) {
-                    for (const p of skillResult) this.projectiles.push(p);
-                } else if (typeof skillResult === 'object') {
-                    this.projectiles.push(skillResult);
-                } else if (skillResult === true) {
-                    // melee skill hit spawn big effect
-                    this.spawnSkillEffect(this.player.x + this.player.size / 2, this.player.y + this.player.size / 2);
-                }
+            if (this.player instanceof RangedCharacter) {
+                const projs = this.player.useSkill();
+                if (Array.isArray(projs)) this.projectiles.push(...projs);
             } else {
-                // still spawn visual for skill activation
+                const targets = this.findTargetsInCone(this.player.skillRange, this.player.skillArcDeg);
+                for (const t of targets) t.takeDamage(this.player.skillDamage);
                 this.spawnSkillEffect(this.player.x + this.player.size / 2, this.player.y + this.player.size / 2);
+                this.player.useSkill(null);
             }
             this.skillRequested = false;
         }
 
-        // update projectiles
+        // update projectiles + collisions vs enemies
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
             p.x += p.dx;
             p.y += p.dy;
             p.life--;
-            // hit enemy?
-            if (p.owner === 'player' && !this.enemy.isDead) {
-                if (p.x > this.enemy.x && p.x < this.enemy.x + this.enemy.size &&
-                    p.y > this.enemy.y && p.y < this.enemy.y + this.enemy.size) {
-                    this.enemy.takeDamage(p.damage);
-                    this.spawnSlash(this.enemy.x + this.enemy.size / 2, this.enemy.y + this.enemy.size / 2);
-                    this.projectiles.splice(i, 1);
-                    continue;
+            if ((p.owner === 'player' || p.owner === 'ally') && this.getAliveEnemies().length) {
+                for (const e of this.enemies) {
+                    if (!e || e.isDead) continue;
+                    if (p.x > e.x && p.x < e.x + e.size && p.y > e.y && p.y < e.y + e.size) {
+                        e.takeDamage(p.damage);
+                        this.spawnSlash(e.x + e.size / 2, e.y + e.size / 2);
+                        this.projectiles.splice(i, 1);
+                        break;
+                    }
                 }
             }
-            if (p.life <= 0) this.projectiles.splice(i, 1);
+            if (p && p.life <= 0) this.projectiles.splice(i, 1);
         }
 
-        // update other effects (slahes/skill/hit) - same as before
+        // cleanup effects arrays
         for (let i = this.slashes.length - 1; i >= 0; i--) {
             this.slashes[i].life--;
             if (this.slashes[i].life <= 0) this.slashes.splice(i, 1);
@@ -139,41 +219,22 @@ export default class GameController {
         }
     }
 
-    render() {
-        this.renderGrid();
-        this.player.render();
-        this.enemy.render();
-        this.renderProjectiles();
-        this.renderSlashes();
-        this.renderSkillEffects();
-        this.renderHitEffects();
-
-        // HUD
-        push();
-        fill(255);
-        textSize(14);
-        text(`Player HP: ${this.player.hp}`, 10, 20);
-        text(`Enemy HP: ${this.enemy.isDead ? 0 : this.enemy.hp}`, 10, 40);
-        text(`Skill CD: ${Math.max(0, Math.ceil(this.player.skillCooldown / 60))}s`, 10, 60);
-        pop();
-
-        if (this.enemy.isDead) {
+    renderProjectiles() {
+        for (const p of this.projectiles) {
             push();
-            fill(0, 255, 0);
-            textSize(28);
-            textAlign(CENTER, CENTER);
-            text('ENEMY DEFEATED!', width / 2, height / 2);
+            stroke(255, 200, 120, map(p.life, 0, 80, 0, 200) * 0.6);
+            strokeWeight(2);
+            line(p.x, p.y, p.x - p.dx * 0.8, p.y - p.dy * 0.8);
+            noStroke();
+            if (p.type === 'arrow') {
+                const ang = Math.atan2(p.dy, p.dx);
+                translate(p.x, p.y); rotate(ang);
+                fill(255, 230, 150); ellipse(0, 0, 8, 5);
+                fill(220, 160, 60); triangle(4, 0, -4, -3, -4, 3);
+            } else {
+                fill(255, 230, 150); ellipse(p.x, p.y, 8);
+            }
             pop();
-        }
-
-        if (this.player.hp <= 0) {
-            push();
-            fill(255, 50, 50);
-            textSize(36);
-            textAlign(CENTER, CENTER);
-            text('GAME OVER', width / 2, height / 2);
-            pop();
-            noLoop();
         }
     }
 
@@ -213,44 +274,59 @@ export default class GameController {
         }
     }
 
-    renderProjectiles() {
-        for (const p of this.projectiles) {
+    render() {
+        this.renderGrid();
+        this.player.render();
+
+        // render allies
+        for (const a of this.allies) if (a) a.render();
+
+        // render enemies
+        for (const e of this.enemies) if (e) e.render();
+
+        this.renderProjectiles();
+        this.renderSlashes();
+        this.renderSkillEffects();
+        this.renderHitEffects();
+
+        // HUD
+        push();
+        fill(255);
+        textSize(14);
+        text(`Player HP: ${this.player.hp}`, 10, 20);
+        text(`Enemies: ${this.getAliveEnemies().length}/${this.enemies.length}`, 10, 40);
+        text(`Floor: ${this.floor}`, 10, 60);
+        text(`Skill CD: ${Math.max(0, Math.ceil(this.player.skillCooldown / 60))}s`, 10, 80);
+        pop();
+
+        if (this.player.hp <= 0) {
             push();
-
-            // trail: a faint line behind projectile using remaining life
-            const trailLen = 10;
-            const alphaTrail = map(p.life, 0, p.life + 30, 0, 200);
-            stroke(255, 200, 120, alphaTrail * 0.6);
-            strokeWeight(2);
-            // draw a short line opposite direction of velocity
-            line(p.x, p.y, p.x - p.dx * 0.8, p.y - p.dy * 0.8);
-
-            noStroke();
-
-            if (p.type === 'arrow') {
-                // draw rotated arrow / projectile
-                const ang = Math.atan2(p.dy, p.dx);
-                translate(p.x, p.y);
-                rotate(ang);
-                // body
-                fill(255, 230, 150);
-                ellipse(0, 0, 8, 5);
-                // arrow head
-                fill(220, 160, 60);
-                triangle(4, 0, -4, -3, -4, 3);
-            } else {
-                // default small projectile
-                fill(255, 230, 150);
-                ellipse(p.x, p.y, 8);
-            }
-
+            fill(255, 80, 80);
+            textSize(36);
+            textAlign(CENTER, CENTER);
+            text('GAME OVER', width / 2, height / 2);
             pop();
+            noLoop();
         }
     }
 
+    nextFloor() {
+        this.floor++;
+        this.player.hp = Math.min(9999, this.player.hp + 20);
+        // clear effects
+        this.slashes = []; this.projectiles = []; this.skillEffects = []; this.hitEffects = [];
+        this.spawnForCurrentFloor();
+    }
+
     restart() {
-        this.player = new Player(120, 120);
-        this.enemy = new Enemy(600, 120);
+        this.floor = this.startingFloor;
+        this.createPlayer();
+        this.enemies = [];
+        this.allies = [];
+        this.projectiles = []; this.slashes = []; this.skillEffects = []; this.hitEffects = [];
+        this.spawnForCurrentFloor();
+        window.gameStarted = true;
+        loop();
     }
 
     goToMenu() {
@@ -261,8 +337,7 @@ export default class GameController {
 
     renderGrid() {
         push();
-        stroke(40);
-        strokeWeight(1);
+        stroke(40); strokeWeight(1);
         for (let gx = 0; gx < width; gx += 50) line(gx, 0, gx, height);
         for (let gy = 0; gy < height; gy += 50) line(0, gy, width, gy);
         pop();

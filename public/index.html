@@ -3,14 +3,14 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>RPG — Pilih Karakter</title>
+  <title>Dungeon RPG — Pilih Karakter & Lantai</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root {
-      --bg: #0f1720;
-      --panel: #111827;
-      --accent: #ff9800;
-      --text: #fff;
+      --bg: #0b0f14;
+      --panel: #131922;
+      --accent: #c96f1a;
+      --text: #e7eef6;
     }
 
     html,
@@ -19,7 +19,7 @@
       margin: 0;
       font-family: Inter, Arial, sans-serif;
       background: var(--bg);
-      color: var(--text);
+      color: var(--text)
     }
 
     #game-root {
@@ -27,7 +27,7 @@
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: center
     }
 
     #skillBtn {
@@ -36,121 +36,174 @@
       right: 20px;
       padding: 12px 18px;
       background: var(--accent);
-      color: #fff;
+      color: #111;
       border-radius: 8px;
       border: none;
       cursor: pointer;
       z-index: 30
     }
 
+    #restartBtn,
+    #menuBtn {
+      position: fixed;
+      bottom: 70px;
+      right: 20px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      display: none;
+      z-index: 30
+    }
+
+    #restartBtn {
+      background: #3fbf6f;
+      color: #042
+    }
+
+    #menuBtn {
+      background: #607d8b;
+      color: #fff;
+      bottom: 120px
+    }
+
+    /* Start overlay (dungeon theme) */
     #startOverlay {
       position: fixed;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8));
-      z-index: 100;
-      padding: 20px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.85));
+      z-index: 200
     }
 
     .panel {
-      width: 760px;
+      width: 820px;
       max-width: calc(100% - 40px);
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
       border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6)
+      padding: 22px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7)
     }
 
     .title {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 6px
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--accent)
     }
 
     .subtitle {
-      color: #bbb;
-      margin-bottom: 12px
+      color: #bfcbd8;
+      margin-bottom: 14px
     }
 
     .cards {
       display: flex;
       gap: 14px;
-      margin: 14px 0;
-      flex-wrap: wrap
+      margin-bottom: 14px
     }
 
     .char-card {
       flex: 1;
       min-width: 240px;
       padding: 12px;
-      border-radius: 10px;
+      border-radius: 8px;
       background: rgba(255, 255, 255, 0.02);
-      cursor: pointer;
-      transition: box-shadow .18s, transform .12s
+      cursor: pointer
     }
 
-    .char-card:hover {
-      transform: translateY(-4px)
-    }
-
-    .char-card.selected[data-type="melee"] {
-      box-shadow: 0 18px 40px rgba(0, 188, 212, 0.14), inset 0 0 0 3px rgba(0, 188, 212, 0.08);
-      border: 1px solid rgba(0, 188, 212, 0.16);
-      transform: translateY(-6px);
-    }
-
-    .char-card.selected[data-type="ranged"] {
-      box-shadow: 0 18px 40px rgba(255, 112, 67, 0.14), inset 0 0 0 3px rgba(255, 112, 67, 0.06);
-      border: 1px solid rgba(255, 112, 67, 0.14);
-      transform: translateY(-6px);
-    }
-
-
-    .card-badge {
-      width: 80px;
-      height: 80px;
+    .char-card .badge {
+      width: 64px;
+      height: 64px;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      font-weight: 700
+      font-weight: 800;
+      color: #fff
+    }
+
+    .char-card.selected {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6)
     }
 
     .controls {
       display: flex;
-      align-items: center;
       gap: 12px;
-      margin-top: 10px
+      align-items: center
     }
 
     select,
+    input {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: none
+    }
+
     button.start-btn {
-      padding: 10px 14px;
+      padding: 10px 16px;
       border-radius: 8px;
       border: none;
-      font-size: 16px;
+      background: var(--accent);
+      color: #111;
+      font-weight: 700;
       cursor: pointer
     }
 
-    button.start-btn {
-      background: var(--accent);
-      color: #fff;
-      font-weight: 700
-    }
-
-    .instructions {
-      color: #ddd;
+    .dungeon-info {
       margin-top: 12px;
-      font-size: 14px
+      color: #c0cbd6;
+      font-size: 13px
     }
 
-    .credits {
-      color: #888;
-      margin-top: 10px;
-      font-size: 12px
+    /* Floor cleared overlay */
+    #floorOverlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.85));
+      z-index: 210
+    }
+
+    .floor-box {
+      width: 420px;
+      padding: 18px;
+      border-radius: 10px;
+      background: #0e1620;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      text-align: center
+    }
+
+    .floor-box h2 {
+      color: #ffd07a;
+      margin: 0 0 8px 0
+    }
+
+    .floor-box p {
+      color: #cbd6e0;
+      margin: 6px 0 12px 0
+    }
+
+    .floor-box button {
+      margin: 6px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer
+    }
+
+    .btn-next {
+      background: #4caf50;
+      color: #042
+    }
+
+    .btn-menu {
+      background: #607d8b;
+      color: #fff
     }
 
     @media(max-width:640px) {
@@ -168,76 +221,100 @@
 <body>
   <div id="game-root"></div>
 
-  <!-- skill & action buttons -->
+  <!-- Controls -->
   <button id="skillBtn">SKILL (F)</button>
-  <button id="restartBtn"
-    style="position:fixed;bottom:70px;right:20px;padding:10px 14px;background:#4caf50;color:#fff;border-radius:8px;border:none;display:none;z-index:30">Restart</button>
-  <button id="menuBtn"
-    style="position:fixed;bottom:120px;right:20px;padding:10px 14px;background:#607d8b;color:#fff;border-radius:8px;border:none;display:none;z-index:30">Main
-    Menu</button>
+  <button id="restartBtn">Restart</button>
+  <button id="menuBtn">Main Menu</button>
 
   <!-- START OVERLAY -->
   <div id="startOverlay">
     <div class="panel" role="dialog" aria-modal="true" aria-labelledby="gameTitle">
-      <div class="title" id="gameTitle">Echo of Motion — Choose Your Hero</div>
-      <div class="subtitle">Pilih karakter untuk memulai. Setiap karakter punya playstyle berbeda.</div>
+      <div class="title" id="gameTitle">Dungeon: Echo of Motion</div>
+      <div class="subtitle">Masuk ke dungeon — pilih pahlawanmu dan lantai awal. Setiap lantai makin sulit.</div>
 
       <div class="cards">
         <div class="char-card" id="card-melee" data-type="melee">
-          <div style="display:flex;gap:10px;align-items:center">
-            <div class="card-badge" style="background:linear-gradient(45deg,#00bcd4,#004d66)">MELEE</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div class="badge" style="background:linear-gradient(45deg,#00796b,#004d40)">MELEE</div>
             <div>
-              <div style="font-weight:700">Melee — Vanguard</div>
-              <div style="color:#bbb;margin-top:6px">HP tinggi, serangan jarak dekat cone lebar.</div>
-              <div style="margin-top:8px">HP: <strong>120</strong> · Speed: <strong>4</strong></div>
+              <div style="font-weight:700">Vanguard (Melee)</div>
+              <div style="color:#bfcbd8;font-size:13px">HP tinggi, serangan cone jarak dekat.</div>
+              <div style="margin-top:6px;font-size:13px">HP:120 · Speed:4 · Melee</div>
             </div>
           </div>
         </div>
 
         <div class="char-card" id="card-ranged" data-type="ranged">
-          <div style="display:flex;gap:10px;align-items:center">
-            <div class="card-badge" style="background:linear-gradient(45deg,#ff7043,#7b2f00)">RANGED</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div class="badge" style="background:linear-gradient(45deg,#ef6c00,#7b2f00)">RANGED</div>
             <div>
-              <div style="font-weight:700">Ranged — Archer</div>
-              <div style="color:#bbb;margin-top:6px">HP rendah, serangan jauh menggunakan projectile.</div>
-              <div style="margin-top:8px">HP: <strong>80</strong> · Speed: <strong>4.5</strong></div>
+              <div style="font-weight:700">Archer (Ranged)</div>
+              <div style="color:#bfcbd8;font-size:13px">HP rendah, serang dari jarak jauh dengan panah.</div>
+              <div style="margin-top:6px;font-size:13px">HP:80 · Speed:4.5 · Projectile</div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="controls">
-        <label for="difficulty" style="color:#ddd">Difficulty:</label>
-        <select id="difficulty">
-          <option value="easy">Easy</option>
-          <option value="normal" selected>Normal</option>
-          <option value="hard">Hard</option>
-        </select>
+        <label for="startFloor">Starting Floor:</label>
+        <input id="startFloor" type="number" min="1" max="50" value="1" style="width:80px" />
         <div style="flex:1"></div>
-        <button class="start-btn" id="startBtn">Start Game</button>
+        <label for="difficulty">Difficulty:</label>
+        <select id="difficulty">
+          <option value="normal">Normal</option>
+          <option value="hard">Hard</option>
+          <option value="easy">Easy</option>
+        </select>
+        <button class="start-btn" id="startBtn">Enter Dungeon</button>
       </div>
 
-      <div class="instructions">
-        Controls: <strong>WASD</strong> / <strong>Arrow</strong> to move. <strong>Space</strong> to attack.
-        <strong>F</strong> or <strong>SKILL</strong> untuk gunakan skill.
-        <br> Klik card untuk memilih karakter (highlight akan muncul). Klik Start untuk memulai.
+      <div class="dungeon-info">
+        Saat naik lantai, musuh menjadi lebih kuat (HP & speed). Gunakan skill untuk bertahan — progres lantai akan
+        muncul setelah mengalahkan musuh.
       </div>
-
-      <div class="credits">Prototype menggunakan p5.js. Cocok untuk pengembangan Tugas Akhir.</div>
     </div>
   </div>
+
+  <!-- FLOOR CLEARED OVERLAY -->
+  <div id="floorOverlay">
+    <div class="floor-box">
+      <h2>Floor Cleared!</h2>
+      <p id="nextFloorText">Kamu mengalahkan musuh di lantai 1.</p>
+      <div>
+        <button class="btn-next" id="nextFloorBtn">Next Floor</button>
+        <button class="btn-menu" id="floorToMenuBtn">Kembali ke Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HELPER CHOICE OVERLAY (muncul tiap 3 floor setelah clear) -->
+  <div id="helperOverlay"
+    style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:220">
+    <div style="width:380px;padding:18px;border-radius:10px;background:#0e1620;text-align:center">
+      <h3 style="color:#ffd07a;margin:0">Choose a Helper</h3>
+      <p style="color:#cbd6e0">Pilih satu ally untuk bergabung (bertindak otomatis).</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button id="helperMeleeBtn"
+          style="padding:8px 12px;border-radius:8px;background:#00796b;color:#fff;border:none">Melee Ally</button>
+        <button id="helperRangedBtn"
+          style="padding:8px 12px;border-radius:8px;background:#ef6c00;color:#fff;border:none">Ranged Ally</button>
+        <button id="helperNoneBtn"
+          style="padding:8px 12px;border-radius:8px;background:#607d8b;color:#fff;border:none">No Thanks</button>
+      </div>
+    </div>
+  </div>
+
 
   <script>
     // selection UI before module loads
     (function () {
       const melee = document.getElementById('card-melee');
       const ranged = document.getElementById('card-ranged');
-      let selected = 'melee';
       function select(type) {
-        selected = type;
         melee.classList.toggle('selected', type === 'melee');
         ranged.classList.toggle('selected', type === 'ranged');
-        window.__selectedCharacterType = selected;
+        window.__selectedCharacterType = type;
       }
       melee.addEventListener('click', () => select('melee'));
       ranged.addEventListener('click', () => select('ranged'));

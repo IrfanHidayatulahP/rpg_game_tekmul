@@ -2,23 +2,20 @@ export default class Enemy {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-
         this.size = 48;
-        this.hp = 50;
+
+        this.maxHp = 50;
+        this.hp = this.maxHp;
+        this.isDead = false;
+
         this.speed = 1.2;
+        this.attackRange = 70;
+        this.attackDamage = 8;
+        this.attackDelay = 60; // frames
+        this.attackCooldown = 0;
 
-        // attack properties (frames & units)
-        this.attackRange = 70;      // distance in px
-        this.attackArcDeg = 90;     // cone angle total (degrees)
-        this.attackDamage = 8;      // damage to player
-        this.attackCooldown = 0;    // current cooldown (frames)
-        this.attackDelay = 60;      // cooldown length (frames)
-
-        // facing angle toward player (radians)
         this.facingAngle = 0;
-
-        // visual
-        this.showAttackArc = 0;     // frames left to draw arc
+        this.showAttackArc = 0;
     }
 
     // helper: minimal absolute angular difference in radians
@@ -82,34 +79,39 @@ export default class Enemy {
     update(player) {
         if (this.isDead) return false;
 
-        // compute vector to player and facing
-        const dx = (player.x + player.size / 2) - (this.x + this.size / 2);
-        const dy = (player.y + player.size / 2) - (this.y + this.size / 2);
+        const px = player.x + player.size / 2;
+        const py = player.y + player.size / 2;
+        const ex = this.x + this.size / 2;
+        const ey = this.y + this.size / 2;
+
+        const dx = px - ex;
+        const dy = py - ey;
         const dist = Math.hypot(dx, dy);
 
-        // update facing angle toward player
         this.facingAngle = Math.atan2(dy, dx);
 
-        // movement: move toward player if outside (a bit less than attackRange)
-        const stopDist = this.attackRange * 0.9;
-        if (dist > stopDist) {
+        // move if too far
+        if (dist > this.attackRange + 8) {
             this.x += Math.cos(this.facingAngle) * this.speed;
             this.y += Math.sin(this.facingAngle) * this.speed;
         }
 
-        // countdown cooldown
+        // cooldown handling
         if (this.attackCooldown > 0) this.attackCooldown--;
 
-        // attempt attack if in range and cooldown ready
-        let attacked = false;
-        if (this.canAttack() && dist <= this.attackRange + player.size * 0.6) {
-            attacked = this.attack(player);
+        // if in range try attack
+        if (dist <= this.attackRange + player.size / 2 && this.attackCooldown === 0) {
+            // perform attack: reduce player HP
+            player.hp = Math.max(0, player.hp - this.attackDamage);
+            this.attackCooldown = this.attackDelay;
+            this.showAttackArc = 10;
+            return true; // indicates player hit this frame
         }
 
-        // decrease visual arc lifetime
+        // reduce visual arc
         if (this.showAttackArc > 0) this.showAttackArc--;
 
-        return attacked;
+        return false;
     }
 
     render() {
@@ -123,14 +125,10 @@ export default class Enemy {
         pop();
 
         // HP bar
-        push();
-        noStroke();
-        fill(0);
-        rect(this.x, this.y - 8, this.size, 5);
-        fill(0, 255, 0);
-        const hpRatio = Math.max(0, this.hp) / 50;
-        rect(this.x, this.y - 8, this.size * hpRatio, 5);
-        pop();
+        this.drawHP();
+        if (this.showAttackArc > 0) {
+            this.drawAttackArc();
+        }
 
         // attack cone visual when active — oriented by this.facingAngle
         if (this.showAttackArc > 0) {
@@ -141,16 +139,39 @@ export default class Enemy {
     drawAttackArc() {
         const cx = this.x + this.size / 2;
         const cy = this.y + this.size / 2;
-        const facing = this.facingAngle;
-        const start = facing - (this.attackArcDeg / 2) * (Math.PI / 180);
-        const end = facing + (this.attackArcDeg / 2) * (Math.PI / 180);
+        const arcDeg = 90;
+        const start = this.facingAngle - (arcDeg / 2) * (Math.PI / 180);
+        const end = this.facingAngle + (arcDeg / 2) * (Math.PI / 180);
 
         push();
         translate(cx, cy);
         noStroke();
-        fill(255, 80, 80, 120);
-        // draw arc oriented to facing
+        fill(255, 80, 80, 100);
         arc(0, 0, this.attackRange * 2, this.attackRange * 2, start, end, PIE);
+        pop();
+    }
+
+    drawHP() {
+        // fixed width (doesn't grow with maxHp)
+        const barW = 56;
+        const barH = 6;
+        const cx = this.x + this.size / 2 - barW / 2;
+        const cy = this.y - 12;
+
+        push();
+        noStroke();
+        // background bar
+        fill(30);
+        rect(cx, cy, barW, barH, 3);
+        // filled portion based on hp / maxHp
+        const pct = this.maxHp > 0 ? Math.max(0, Math.min(1, this.hp / this.maxHp)) : 0;
+        fill(0, 200, 80);
+        rect(cx, cy, barW * pct, barH, 3);
+        // numeric HP shown to the right
+        fill(255);
+        textSize(11);
+        textAlign(LEFT, CENTER);
+        text(`${this.hp}`, cx + barW + 8, cy + barH / 2);
         pop();
     }
 
@@ -158,10 +179,8 @@ export default class Enemy {
         if (this.isDead) return;
         this.hp -= amount;
         if (this.hp <= 0) {
+            this.hp = 0;
             this.isDead = true;
-            console.log('Enemy died');
-        } else {
-            console.log('Enemy HP:', this.hp);
         }
     }
 }
