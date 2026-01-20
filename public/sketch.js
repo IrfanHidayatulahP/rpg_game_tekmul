@@ -11,8 +11,8 @@ window.startGame = function (difficulty = 'normal') {
 
   game = new GameController(sel, startFloor, difficulty);
 
-  // hide overlays, show buttons
   const ov = document.getElementById('startOverlay'); if (ov) ov.style.display = 'none';
+  const gameOverOv = document.getElementById('gameOverOverlay'); if (gameOverOv) gameOverOv.style.display = 'none';
   toggleGameButtons(true);
   const canv = document.querySelector('canvas'); if (canv) canv.focus();
 
@@ -27,7 +27,6 @@ window.setup = function () {
   c.parent('game-root');
   rectMode(CORNER); textFont('Arial');
 
-  // wire start button
   const startBtn = document.getElementById('startBtn');
   const diffEl = document.getElementById('difficulty');
   if (startBtn) startBtn.addEventListener('click', () => {
@@ -35,18 +34,15 @@ window.setup = function () {
     window.startGame(difficulty);
   });
 
-  // restart & menu
   const restartBtn = document.getElementById('restartBtn');
   const menuBtn = document.getElementById('menuBtn');
   if (restartBtn) restartBtn.addEventListener('click', () => { if (game) game.restart(); });
   if (menuBtn) menuBtn.addEventListener('click', () => { if (game) game.goToMenu(); toggleGameButtons(false); });
 
-  // floor overlay buttons
   const nextFloorBtn = document.getElementById('nextFloorBtn');
   const floorToMenuBtn = document.getElementById('floorToMenuBtn');
   if (nextFloorBtn) nextFloorBtn.addEventListener('click', () => {
     if (!game) return;
-    // hide overlay, advance floor
     const fo = document.getElementById('floorOverlay'); if (fo) fo.style.display = 'none';
     game.nextFloor();
     toggleGameButtons(true);
@@ -59,14 +55,34 @@ window.setup = function () {
     window.awaitingNextFloor = false;
   });
 
+  const gameOverRestartBtn = document.getElementById('gameOverRestartBtn');
+  const gameOverMenuBtn = document.getElementById('gameOverMenuBtn');
+  
+  if (gameOverRestartBtn) gameOverRestartBtn.addEventListener('click', () => {
+    const gameOverOv = document.getElementById('gameOverOverlay');
+    if (gameOverOv) gameOverOv.style.display = 'none';
+    if (game) {
+      game.restart();
+      toggleGameButtons(true);
+      loop();
+    }
+  });
+
+  if (gameOverMenuBtn) gameOverMenuBtn.addEventListener('click', () => {
+    const gameOverOv = document.getElementById('gameOverOverlay');
+    if (gameOverOv) gameOverOv.style.display = 'none';
+    if (game) game.goToMenu();
+    toggleGameButtons(false);
+    loop();
+  });
+
   toggleGameButtons(false);
 };
 
 window.draw = function () {
-  background(12); // dungeon dark
+  background(12);
 
   if (!window.gameStarted || !game) {
-    // nothing to draw while in menu, canvas sits dark
     push(); fill(255, 255, 255, 6); noStroke(); rect(0, 0, width, height); pop();
     return;
   }
@@ -74,20 +90,22 @@ window.draw = function () {
   game.update();
   game.render();
 
-  // if enemy dead and overlay not shown, show floor cleared overlay
+  if (game && game.player.hp <= 0) {
+    showGameOverModal();
+    noLoop();
+    return;
+  }
+
   if (game && game.getAliveEnemies().length === 0 && !window.awaitingNextFloor) {
     window.awaitingNextFloor = true;
     toggleGameButtons(false);
 
-    // if floor multiple of 3 -> show helper overlay
     if (game.floor % 3 === 0) {
       const helper = document.getElementById('helperOverlay');
       if (helper) helper.style.display = 'flex';
-      // wire buttons (only once)
       document.getElementById('helperMeleeBtn').onclick = () => {
         if (game) game.addAlly('melee');
         helper.style.display = 'none';
-        // then show floor cleared message (or directly go to next floor)
         document.getElementById('nextFloorText').textContent = `You chose a helper — move to floor ${game.floor + 1}?`;
         document.getElementById('floorOverlay').style.display = 'flex';
       };
@@ -103,12 +121,34 @@ window.draw = function () {
         document.getElementById('floorOverlay').style.display = 'flex';
       };
     } else {
-      // normal floor cleared overlay
       document.getElementById('nextFloorText').textContent = `You cleared floor ${game.floor}! Ready for floor ${game.floor + 1}?`;
       document.getElementById('floorOverlay').style.display = 'flex';
     }
   }
 };
+
+function showGameOverModal() {
+  if (!game) return;
+
+  const gameOverOv = document.getElementById('gameOverOverlay');
+  const statsEl = document.getElementById('gameOverStats');
+  
+  if (gameOverOv && statsEl) {
+    const characterName = game.characterType === 'melee' ? '🛡️ Vanguard' : '🏹 Archer';
+    const difficulty = game.difficulty === 'hard' ? '🔥 Hard' : game.difficulty === 'easy' ? '🌱 Easy' : '⚔️ Normal';
+    
+    statsEl.innerHTML = `
+      <strong>Character:</strong> ${characterName}<br>
+      <strong>Highest Floor Reached:</strong> Floor ${game.floor}<br>
+      <strong>Difficulty:</strong> ${difficulty}<br>
+      <strong>Allies:</strong> ${game.allies.length}
+    `;
+    
+    gameOverOv.style.display = 'flex';
+  }
+
+  toggleGameButtons(false);
+}
 
 function toggleGameButtons(show) {
   document.getElementById('restartBtn').style.display = show ? 'block' : 'none';

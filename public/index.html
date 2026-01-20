@@ -5,220 +5,14 @@
   <meta charset="utf-8" />
   <title>Dungeon RPG — Pilih Karakter & Lantai</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    :root {
-      --bg: #0b0f14;
-      --panel: #131922;
-      --accent: #c96f1a;
-      --text: #e7eef6;
-    }
-
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      font-family: Inter, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text)
-    }
-
-    #game-root {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center
-    }
-
-    #skillBtn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 12px 18px;
-      background: var(--accent);
-      color: #111;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      z-index: 30
-    }
-
-    #restartBtn,
-    #menuBtn {
-      position: fixed;
-      bottom: 70px;
-      right: 20px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: none;
-      display: none;
-      z-index: 30
-    }
-
-    #restartBtn {
-      background: #3fbf6f;
-      color: #042
-    }
-
-    #menuBtn {
-      background: #607d8b;
-      color: #fff;
-      bottom: 120px
-    }
-
-    /* Start overlay (dungeon theme) */
-    #startOverlay {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.85));
-      z-index: 200
-    }
-
-    .panel {
-      width: 820px;
-      max-width: calc(100% - 40px);
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
-      border-radius: 12px;
-      padding: 22px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7)
-    }
-
-    .title {
-      font-size: 26px;
-      font-weight: 800;
-      margin-bottom: 8px;
-      color: var(--accent)
-    }
-
-    .subtitle {
-      color: #bfcbd8;
-      margin-bottom: 14px
-    }
-
-    .cards {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 14px
-    }
-
-    .char-card {
-      flex: 1;
-      min-width: 240px;
-      padding: 12px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.02);
-      cursor: pointer
-    }
-
-    .char-card .badge {
-      width: 64px;
-      height: 64px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      color: #fff
-    }
-
-    .char-card.selected {
-      transform: translateY(-6px);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6)
-    }
-
-    .controls {
-      display: flex;
-      gap: 12px;
-      align-items: center
-    }
-
-    select,
-    input {
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: none
-    }
-
-    button.start-btn {
-      padding: 10px 16px;
-      border-radius: 8px;
-      border: none;
-      background: var(--accent);
-      color: #111;
-      font-weight: 700;
-      cursor: pointer
-    }
-
-    .dungeon-info {
-      margin-top: 12px;
-      color: #c0cbd6;
-      font-size: 13px
-    }
-
-    /* Floor cleared overlay */
-    #floorOverlay {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.85));
-      z-index: 210
-    }
-
-    .floor-box {
-      width: 420px;
-      padding: 18px;
-      border-radius: 10px;
-      background: #0e1620;
-      border: 1px solid rgba(255, 255, 255, 0.03);
-      text-align: center
-    }
-
-    .floor-box h2 {
-      color: #ffd07a;
-      margin: 0 0 8px 0
-    }
-
-    .floor-box p {
-      color: #cbd6e0;
-      margin: 6px 0 12px 0
-    }
-
-    .floor-box button {
-      margin: 6px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer
-    }
-
-    .btn-next {
-      background: #4caf50;
-      color: #042
-    }
-
-    .btn-menu {
-      background: #607d8b;
-      color: #fff
-    }
-
-    @media(max-width:640px) {
-      .panel {
-        padding: 14px
-      }
-
-      .title {
-        font-size: 20px
-      }
-    }
-  </style>
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
+  <!-- Floating particles -->
+  <div class="particles" id="particles"></div>
+
   <div id="game-root"></div>
 
   <!-- Controls -->
@@ -229,49 +23,52 @@
   <!-- START OVERLAY -->
   <div id="startOverlay">
     <div class="panel" role="dialog" aria-modal="true" aria-labelledby="gameTitle">
-      <div class="title" id="gameTitle">Dungeon: Echo of Motion</div>
-      <div class="subtitle">Masuk ke dungeon — pilih pahlawanmu dan lantai awal. Setiap lantai makin sulit.</div>
+      <div class="title" id="gameTitle">⚔️ Dungeon: Echo of Motion</div>
+      <div class="subtitle">Masuk ke dungeon.</div>
 
       <div class="cards">
         <div class="char-card" id="card-melee" data-type="melee">
-          <div style="display:flex;gap:12px;align-items:center">
-            <div class="badge" style="background:linear-gradient(45deg,#00796b,#004d40)">MELEE</div>
-            <div>
-              <div style="font-weight:700">Vanguard (Melee)</div>
-              <div style="color:#bfcbd8;font-size:13px">HP tinggi, serangan cone jarak dekat.</div>
-              <div style="margin-top:6px;font-size:13px">HP:120 · Speed:4 · Melee</div>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div class="badge" style="background:linear-gradient(135deg,#00796b,#004d40)">MELEE</div>
+            <div class="char-info">
+              <div class="char-name">🛡️ Vanguard</div>
+              <div class="char-desc">HP tinggi, serangan cone jarak dekat.</div>
+              <div class="char-stats">HP: 120 • Speed: 4 • Melee</div>
             </div>
           </div>
         </div>
 
         <div class="char-card" id="card-ranged" data-type="ranged">
-          <div style="display:flex;gap:12px;align-items:center">
-            <div class="badge" style="background:linear-gradient(45deg,#ef6c00,#7b2f00)">RANGED</div>
-            <div>
-              <div style="font-weight:700">Archer (Ranged)</div>
-              <div style="color:#bfcbd8;font-size:13px">HP rendah, serang dari jarak jauh dengan panah.</div>
-              <div style="margin-top:6px;font-size:13px">HP:80 · Speed:4.5 · Projectile</div>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div class="badge" style="background:linear-gradient(135deg,#ef6c00,#bf360c)">RANGED</div>
+            <div class="char-info">
+              <div class="char-name">🏹 Archer</div>
+              <div class="char-desc">HP rendah, serang dari jarak jauh dengan panah.</div>
+              <div class="char-stats">HP: 80 • Speed: 4.5 • Projectile</div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="controls">
-        <label for="startFloor">Starting Floor:</label>
-        <input id="startFloor" type="number" min="1" max="50" value="1" style="width:80px" />
+        <div class="control-group">
+          <label for="startFloor">Starting Floor:</label>
+          <input id="startFloor" type="number" min="1" max="50" value="1" style="width:90px" />
+        </div>
         <div style="flex:1"></div>
-        <label for="difficulty">Difficulty:</label>
-        <select id="difficulty">
-          <option value="normal">Normal</option>
-          <option value="hard">Hard</option>
-          <option value="easy">Easy</option>
-        </select>
-        <button class="start-btn" id="startBtn">Enter Dungeon</button>
+        <div class="control-group">
+          <label for="difficulty">Difficulty:</label>
+          <select id="difficulty">
+            <option value="normal">Normal</option>
+            <option value="hard">Hard</option>
+            <option value="easy">Easy</option>
+          </select>
+        </div>
+        <button class="start-btn" id="startBtn">⚡ Enter Dungeon</button>
       </div>
 
       <div class="dungeon-info">
-        Saat naik lantai, musuh menjadi lebih kuat (HP & speed). Gunakan skill untuk bertahan — progres lantai akan
-        muncul setelah mengalahkan musuh.
+        💡 <strong>Tips:</strong> Saat naik lantai, musuh menjadi lebih kuat (HP & speed). Gunakan skill untuk bertahan — progres lantai akan muncul setelah mengalahkan musuh.
       </div>
     </div>
   </div>
@@ -279,56 +76,48 @@
   <!-- FLOOR CLEARED OVERLAY -->
   <div id="floorOverlay">
     <div class="floor-box">
-      <h2>Floor Cleared!</h2>
+      <h2>🏆 Floor Cleared!</h2>
       <p id="nextFloorText">Kamu mengalahkan musuh di lantai 1.</p>
       <div>
-        <button class="btn-next" id="nextFloorBtn">Next Floor</button>
-        <button class="btn-menu" id="floorToMenuBtn">Kembali ke Menu</button>
+        <button class="btn-next" id="nextFloorBtn">Next Floor →</button>
+        <button class="btn-menu" id="floorToMenuBtn">← Kembali ke Menu</button>
       </div>
     </div>
   </div>
 
-  <!-- HELPER CHOICE OVERLAY (muncul tiap 3 floor setelah clear) -->
-  <div id="helperOverlay"
-    style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:220">
-    <div style="width:380px;padding:18px;border-radius:10px;background:#0e1620;text-align:center">
-      <h3 style="color:#ffd07a;margin:0">Choose a Helper</h3>
-      <p style="color:#cbd6e0">Pilih satu ally untuk bergabung (bertindak otomatis).</p>
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
-        <button id="helperMeleeBtn"
-          style="padding:8px 12px;border-radius:8px;background:#00796b;color:#fff;border:none">Melee Ally</button>
-        <button id="helperRangedBtn"
-          style="padding:8px 12px;border-radius:8px;background:#ef6c00;color:#fff;border:none">Ranged Ally</button>
-        <button id="helperNoneBtn"
-          style="padding:8px 12px;border-radius:8px;background:#607d8b;color:#fff;border:none">No Thanks</button>
+  <!-- HELPER CHOICE OVERLAY -->
+  <div id="helperOverlay">
+    <div class="helper-box">
+      <h3>🤝 Choose a Helper</h3>
+      <p>Pilih satu ally untuk bergabung (bertindak otomatis).</p>
+      <div class="helper-buttons">
+        <button id="helperMeleeBtn">🛡️ Melee Ally</button>
+        <button id="helperRangedBtn">🏹 Ranged Ally</button>
+        <button id="helperNoneBtn">✖️ No Thanks</button>
       </div>
     </div>
   </div>
 
-
-  <script>
-    // selection UI before module loads
-    (function () {
-      const melee = document.getElementById('card-melee');
-      const ranged = document.getElementById('card-ranged');
-      function select(type) {
-        melee.classList.toggle('selected', type === 'melee');
-        ranged.classList.toggle('selected', type === 'ranged');
-        window.__selectedCharacterType = type;
-      }
-      melee.addEventListener('click', () => select('melee'));
-      ranged.addEventListener('click', () => select('ranged'));
-      // default
-      select('melee');
-    })();
-  </script>
+  <!-- GAME OVER OVERLAY -->
+  <div id="gameOverOverlay">
+    <div class="game-over-box">
+      <div style="font-size:72px;margin-bottom:10px;animation:skullFloat 2s ease-in-out infinite">💀</div>
+      <h2>GAME OVER</h2>
+      <p id="gameOverStats"></p>
+      <div>
+        <button id="gameOverRestartBtn">🔄 Restart Floor</button>
+        <button id="gameOverMenuBtn">🏠 Main Menu</button>
+      </div>
+    </div>
+  </div>
 
   <!-- libs -->
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
   <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
 
-  <!-- entry module -->
+  <!-- Scripts -->
+  <script src="main.js"></script>
   <script type="module" src="./sketch.js"></script>
 </body>
 

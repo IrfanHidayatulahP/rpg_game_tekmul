@@ -1,4 +1,3 @@
-// GameController.js
 import Player from '../models/Player.js';
 import Enemy from '../models/Enemy.js';
 import MeleeCharacter from '../models/MeleeCharacter.js';
@@ -35,7 +34,6 @@ export default class GameController {
     }
 
     enemiesCountForFloor() {
-        // 1 enemy for floors 1-3, 2 for 4-6, etc.
         return 1 + Math.floor((this.floor - 1) / 3);
     }
 
@@ -63,7 +61,6 @@ export default class GameController {
     }
 
     addAlly(type = 'melee') {
-        // create a template hero to copy stats from MeleeCharacter / RangedCharacter
         let template = null;
         if (type === 'melee') {
             template = new MeleeCharacter(0, 0);
@@ -71,7 +68,6 @@ export default class GameController {
             template = new RangedCharacter(0, 0);
         }
 
-        // pull relevant stats into a plain object
         const stats = {
             hp: template.hp,
             speed: template.speed,
@@ -83,7 +79,6 @@ export default class GameController {
             attackArcDeg: template.attackArcDeg || 120
         };
 
-        // spawn ally near player
         const a = new Ally(this.player.x + 40, this.player.y + 40, type, stats);
         this.allies.push(a);
     }
@@ -92,7 +87,29 @@ export default class GameController {
         return this.enemies.filter(e => e && !e.isDead);
     }
 
-    // find enemies in player's cone; returns array sorted by distance
+    getNearestEnemy() {
+        const alive = this.getAliveEnemies();
+        if (alive.length === 0) return null;
+
+        const px = this.player.x + this.player.size / 2;
+        const py = this.player.y + this.player.size / 2;
+
+        let nearest = null;
+        let minDist = Infinity;
+
+        for (const e of alive) {
+            const ex = e.x + e.size / 2;
+            const ey = e.y + e.size / 2;
+            const dist = Math.hypot(ex - px, ey - py);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = e;
+            }
+        }
+
+        return nearest;
+    }
+
     findTargetsInCone(range, arcDeg) {
         const px = this.player.x + this.player.size / 2;
         const py = this.player.y + this.player.size / 2;
@@ -126,18 +143,16 @@ export default class GameController {
         this.player.move(dx, dy);
 
         if (keyIsDown(32)) {
-            // attack: if ranged returns projectile(s)
             if (this.player instanceof RangedCharacter) {
-                const proj = this.player.attack();
+                const nearestEnemy = this.getNearestEnemy();
+                const proj = this.player.attack(nearestEnemy);
                 if (proj) this.projectiles.push(proj);
             } else {
-                // melee: attack nearest valid target in cone
                 const targets = this.findTargetsInCone(this.player.attackRange, this.player.attackArcDeg);
                 if (targets.length > 0) {
                     this.player.attack(targets[0]);
                     this.spawnSlash(targets[0].x + targets[0].size / 2, targets[0].y + targets[0].size / 2);
                 } else {
-                    // still swing (visual) even if miss
                     this.player.attack(null);
                 }
             }
@@ -154,7 +169,6 @@ export default class GameController {
         this.handleInput();
         this.player.update();
 
-        // update allies (auto-behaviour)
         for (let idx = 0; idx < this.allies.length; idx++) {
             const a = this.allies[idx];
             if (!a) continue;
@@ -163,17 +177,16 @@ export default class GameController {
             a.act(this.player, this.getAliveEnemies(), (proj) => this.projectiles.push(proj));
         }
 
-        // update enemies
         for (const e of this.enemies) {
             if (!e) continue;
             const hit = e.update(this.player);
             if (hit) this.spawnHitEffect(this.player.x + this.player.size / 2, this.player.y + this.player.size / 2);
         }
 
-        // handle skill request (player useSkill may return projectiles or boolean)
         if (this.skillRequested) {
             if (this.player instanceof RangedCharacter) {
-                const projs = this.player.useSkill();
+                const nearestEnemy = this.getNearestEnemy();
+                const projs = this.player.useSkill(nearestEnemy);
                 if (Array.isArray(projs)) this.projectiles.push(...projs);
             } else {
                 const targets = this.findTargetsInCone(this.player.skillRange, this.player.skillArcDeg);
@@ -184,7 +197,6 @@ export default class GameController {
             this.skillRequested = false;
         }
 
-        // update projectiles + collisions vs enemies
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
             p.x += p.dx;
@@ -204,7 +216,6 @@ export default class GameController {
             if (p && p.life <= 0) this.projectiles.splice(i, 1);
         }
 
-        // cleanup effects arrays
         for (let i = this.slashes.length - 1; i >= 0; i--) {
             this.slashes[i].life--;
             if (this.slashes[i].life <= 0) this.slashes.splice(i, 1);
@@ -278,10 +289,7 @@ export default class GameController {
         this.renderGrid();
         this.player.render();
 
-        // render allies
         for (const a of this.allies) if (a) a.render();
-
-        // render enemies
         for (const e of this.enemies) if (e) e.render();
 
         this.renderProjectiles();
@@ -289,7 +297,6 @@ export default class GameController {
         this.renderSkillEffects();
         this.renderHitEffects();
 
-        // HUD
         push();
         fill(255);
         textSize(14);
@@ -299,21 +306,11 @@ export default class GameController {
         text(`Skill CD: ${Math.max(0, Math.ceil(this.player.skillCooldown / 60))}s`, 10, 80);
         pop();
 
-        if (this.player.hp <= 0) {
-            push();
-            fill(255, 80, 80);
-            textSize(36);
-            textAlign(CENTER, CENTER);
-            text('GAME OVER', width / 2, height / 2);
-            pop();
-            noLoop();
-        }
     }
 
     nextFloor() {
         this.floor++;
         this.player.hp = Math.min(9999, this.player.hp + 20);
-        // clear effects
         this.slashes = []; this.projectiles = []; this.skillEffects = []; this.hitEffects = [];
         this.spawnForCurrentFloor();
     }
